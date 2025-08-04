@@ -3,18 +3,18 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
-using OopsAllLalafellsSRE.Utils;
-using OopsAllLalafellsSRE.Windows;
+using RaceGenderChanger.Utils;
+using RaceGenderChanger.Windows;
 using Penumbra.Api.Enums;
 
-namespace OopsAllLalafellsSRE
+namespace RaceGenderChanger
 {
     internal sealed class Plugin : IDalamudPlugin
     {
-        public static string Name => "OopsAllLalafellsSRE";
-        private const string CommandName = "/rc";
+        public static string Name => "RaceGenderChanger";
+        private const string CommandName = "/rgc";
 
-        public WindowSystem WindowSystem { get; } = new("OopsAllLalafellsSRE");
+        public WindowSystem WindowSystem { get; } = new("RaceGenderChanger");
 
         public Plugin(IDalamudPluginInterface pluginInterface)
         {
@@ -50,7 +50,7 @@ namespace OopsAllLalafellsSRE
 
         public static void OutputChatLine(SeString message)
         {
-            var sb = new SeStringBuilder().AddUiForeground("[OAL] ", 58).Append(message);
+            var sb = new SeStringBuilder().AddUiForeground("[RGC] ", 58).Append(message);
             Service.chatGui.Print(new XivChatEntry { Message = sb.BuiltString });
         }
 

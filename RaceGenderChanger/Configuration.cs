@@ -1,9 +1,9 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 using System;
-using static OopsAllLalafellsSRE.Utils.Constant;
+using static RaceGenderChanger.Utils.Constant;
 
-namespace OopsAllLalafellsSRE
+namespace RaceGenderChanger
 {
     [Serializable]
     internal class Configuration : IPluginConfiguration

@@ -4,9 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using static OopsAllLalafellsSRE.Utils.Constant;
+using static RaceGenderChanger.Utils.Constant;
 
-namespace OopsAllLalafellsSRE.Utils
+namespace RaceGenderChanger.Utils
 {
     internal class Drawer : IDisposable
     {
@@ -17,7 +17,7 @@ namespace OopsAllLalafellsSRE.Utils
             Service.configWindow.OnConfigChanged += RefreshLocalPlayer;
             if (Service.configuration.enabled)
             {
-                Plugin.OutputChatLine("OopsAllLalafellsSRE starting...");
+                Plugin.OutputChatLine("RaceGenderChanger starting...");
                 RefreshLocalPlayer();
             }
         }

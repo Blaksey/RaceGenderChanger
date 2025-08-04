@@ -1,0 +1,11 @@
+{
+    "Author": "Avaflow, Ars Magna, Kelvin, Blaksey",
+    "Name": "RaceGenderChanger",
+    "Punchline": "Change your own character's race and gender to Lalafell (or other races!)",
+    "Description": "Change your own character's race and gender to Lalafell (or other races!)\n/rgc on = enable plugin.\n/rgc off = disable plugin.",
+    "InternalName": "RaceGenderChanger",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "lalafells"
+    ]
+}

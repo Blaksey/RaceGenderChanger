@@ -1,11 +1,11 @@
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
-using OopsAllLalafellsSRE.Utils;
+using RaceGenderChanger.Utils;
 using System;
 using System.Numerics;
-using static OopsAllLalafellsSRE.Utils.Constant;
+using static RaceGenderChanger.Utils.Constant;
 
-namespace OopsAllLalafellsSRE.Windows;
+namespace RaceGenderChanger.Windows;
 
 internal class ConfigWindow : Window
 {
@@ -15,7 +15,7 @@ internal class ConfigWindow : Window
     public event Action? OnConfigChanged;
 
     public ConfigWindow(Plugin plugin) : base(
-        "OopsAllLalafellsSRE Configuration Window",
+        "RaceGenderChanger Configuration Window",
         ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
         ImGuiWindowFlags.NoScrollWithMouse)
     {
