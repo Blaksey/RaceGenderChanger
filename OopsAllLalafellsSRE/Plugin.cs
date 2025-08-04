@@ -12,7 +12,7 @@ namespace OopsAllLalafellsSRE
     internal sealed class Plugin : IDalamudPlugin
     {
         public static string Name => "OopsAllLalafellsSRE";
-        private const string CommandName = "/polala";
+        private const string CommandName = "/rc";
 
         public WindowSystem WindowSystem { get; } = new("OopsAllLalafellsSRE");
 
@@ -40,10 +40,11 @@ namespace OopsAllLalafellsSRE
 
             pluginInterface.UiBuilder.Draw += DrawUI;
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            pluginInterface.UiBuilder.OpenMainUi += DrawConfigUI;
 
             Service.commandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Opens OopsAllLalafellsSRE config menu."
+                HelpMessage = "Opens race change config menu."
             });
         }
 
@@ -55,7 +56,7 @@ namespace OopsAllLalafellsSRE
 
         public void Dispose()
         {
-            Service.penumbraApi?.RedrawAll(RedrawType.Redraw);
+            Service.penumbraApi?.RedrawLocalPlayer(RedrawType.Redraw);
 
             WindowSystem.RemoveAllWindows();
 

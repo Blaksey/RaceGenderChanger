@@ -19,7 +19,7 @@ internal class ConfigWindow : Window
         ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
         ImGuiWindowFlags.NoScrollWithMouse)
     {
-        Size = new Vector2(285, 160);
+        Size = new Vector2(285, 190);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Service.configuration;
@@ -34,8 +34,72 @@ internal class ConfigWindow : Window
         if (ImGui.Combo("###Race", ref selectedRaceIndex, race, race.Length))
         {
             configuration.SelectedRace = MapIndexToRace(selectedRaceIndex);
+
+            // Auto-correct gender for race-locked genders
+            if (configuration.SelectedRace == Race.HROTHGAR)
+            {
+                configuration.SelectedGender = 0; // Force male
+            }
+            else if (configuration.SelectedRace == Race.VIERA)
+            {
+                configuration.SelectedGender = 1; // Force female
+            }
+
             configuration.Save();
-            OnConfigChanged?.Invoke();
+            // Only trigger refresh if plugin is enabled (race/gender changes only matter when active)
+            if (configuration.enabled)
+            {
+                OnConfigChanged?.Invoke();
+            }
+        }
+
+        // select gender
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Target Gender");
+        ImGui.SameLine();
+
+        // Disable gender selection for gender-locked races
+        bool isGenderLocked = configuration.SelectedRace == Race.HROTHGAR || configuration.SelectedRace == Race.VIERA;
+        if (isGenderLocked)
+        {
+            ImGui.BeginDisabled();
+        }
+
+        // Radio buttons for gender selection
+        if (ImGui.RadioButton("Male", configuration.SelectedGender == 0))
+        {
+            if (!isGenderLocked)
+            {
+                configuration.SelectedGender = 0;
+                configuration.Save();
+                // Only trigger refresh if plugin is enabled
+                if (configuration.enabled)
+                {
+                    OnConfigChanged?.Invoke();
+                }
+            }
+        }
+        ImGui.SameLine();
+        if (ImGui.RadioButton("Female", configuration.SelectedGender == 1))
+        {
+            if (!isGenderLocked)
+            {
+                configuration.SelectedGender = 1;
+                configuration.Save();
+                // Only trigger refresh if plugin is enabled
+                if (configuration.enabled)
+                {
+                    OnConfigChanged?.Invoke();
+                }
+            }
+        }
+
+        if (isGenderLocked)
+        {
+            ImGui.EndDisabled();
+            ImGui.SameLine();
+            string lockText = configuration.SelectedRace == Race.HROTHGAR ? "(Male only)" : "(Female only)";
+            ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f), lockText);
         }
 
         // Enabled
@@ -56,7 +120,7 @@ internal class ConfigWindow : Window
 
         ImGui.Separator();
         bool _NameHQ = configuration.nameHQ;
-        if (ImGui.Checkbox("Add HQ symbol to native lalafells\n(or other races)", ref _NameHQ))
+        if (ImGui.Checkbox("Add HQ symbol to your changed race", ref _NameHQ))
         {
             configuration.nameHQ = _NameHQ;
             configuration.Save();

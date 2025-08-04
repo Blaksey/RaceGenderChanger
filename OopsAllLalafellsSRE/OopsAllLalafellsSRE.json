@@ -1,8 +1,8 @@
 {
-    "Author": "Avaflow, Ars Magna, Kelvin",
+    "Author": "Avaflow, Ars Magna, Kelvin, Blaksey",
     "Name": "OopsAllLalafellsSRE",
-    "Punchline": "Turn everyone around you into Lalafells (or other races!)",
-    "Description": "Turn everyone around you into Lalafells (or other races!)\n/polala on = enable plugin.\n/polala off = disable plugin.",
+    "Punchline": "Change your own character's race and gender to Lalafell (or other races!)",
+    "Description": "Change your own character's race and gender to Lalafell (or other races!)\n/rc on = enable plugin.\n/rc off = disable plugin.",
     "InternalName": "OopsAllLalafellsSRE",
     "ApplicableVersion": "any",
     "Tags": [

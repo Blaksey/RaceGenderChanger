@@ -19,8 +19,10 @@ namespace OopsAllLalafellsSRE.Utils
                         {
                             if (handler.PlayerCharacter == null) return;
 
-                            // if native lalafells
-                            if (!Drawer.NonNativeID.Contains(handler.PlayerCharacter.Name.TextValue))
+                            // Only add HQ symbol to your own character if it's been race-changed
+                            if (Service.clientState.LocalPlayer != null &&
+                                handler.PlayerCharacter.Name.TextValue == Service.clientState.LocalPlayer.Name.TextValue &&
+                                Drawer.NonNativeID.Contains(handler.PlayerCharacter.Name.TextValue))
                             {
                                 // Plugin.OutputChatLine($"Adding HQ to {handler.PlayerCharacter.Name.TextValue}");
                                 handler.NameParts.Text = $"{handler.Name} \uE03C";

@@ -10,6 +10,7 @@ namespace OopsAllLalafellsSRE
     {
         public int Version { get; set; } = 0;
         public Race SelectedRace { get; set; } = Race.LALAFELL;
+        public byte SelectedGender { get; set; } = 0; // 0 = male, 1 = female
         public bool enabled { get; set; } = false;
         public bool stayOn { get; set; } = false;
         public bool nameHQ { get; set; } = true;
