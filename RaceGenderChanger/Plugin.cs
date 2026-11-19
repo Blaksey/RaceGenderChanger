@@ -5,7 +5,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using RaceGenderChanger.Utils;
 using RaceGenderChanger.Windows;
-using Penumbra.Api.Enums;
 
 namespace RaceGenderChanger
 {
@@ -30,13 +29,12 @@ namespace RaceGenderChanger
             Service.configuration.Initialize(pluginInterface);
 
             _ = pluginInterface.Create<Service>();
-            Service.plugin = this;
             Service.penumbraApi = new PenumbraIpc(pluginInterface);
-            Service.configWindow = new ConfigWindow(this);
+            Service.configWindow = new ConfigWindow();
             WindowSystem.AddWindow(Service.configWindow);
 
-            _ = pluginInterface.Create<Drawer>();
-            _ = pluginInterface.Create<Nameplate>();
+            Service.drawer = pluginInterface.Create<Drawer>()!;
+            Service.nameplate = pluginInterface.Create<Nameplate>()!;
 
             pluginInterface.UiBuilder.Draw += DrawUI;
             pluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
@@ -56,12 +54,18 @@ namespace RaceGenderChanger
 
         public void Dispose()
         {
-            Service.penumbraApi?.RedrawLocalPlayer(RedrawType.Redraw);
+            Service.pluginInterface.UiBuilder.Draw -= DrawUI;
+            Service.pluginInterface.UiBuilder.OpenConfigUi -= DrawConfigUI;
+            Service.pluginInterface.UiBuilder.OpenMainUi -= DrawConfigUI;
+
+            var penumbra = Service.penumbraApi;
+            Service.drawer?.Dispose();
+            penumbra?.Dispose();
+            if (Service.configuration.enabled && penumbra != null)
+                _ = Service.framework.RunOnFrameworkThread(() => penumbra.RedrawLocalPlayer(reportUnavailable: false));
 
             WindowSystem.RemoveAllWindows();
 
-            Service.penumbraApi?.Dispose();
-            Service.drawer?.Dispose();
             Service.nameplate?.Dispose();
             Service.commandManager?.RemoveHandler(CommandName);
         }

@@ -1,38 +1,24 @@
 using Dalamud.Game.Gui.NamePlate;
+using System;
+using System.Collections.Generic;
 
-namespace RaceGenderChanger.Utils
+namespace RaceGenderChanger.Utils;
+
+internal sealed class Nameplate : IDisposable
 {
-    internal class Nameplate
+    public Nameplate() => Service.namePlateGui.OnNamePlateUpdate += UpdateNameplates;
+
+    private static void UpdateNameplates(INamePlateUpdateContext context, IReadOnlyList<INamePlateUpdateHandler> handlers)
     {
-        public Nameplate()
+        if (!Service.configuration.enabled || !Service.configuration.nameHQ || Drawer.ChangedActor == 0)
+            return;
+
+        foreach (var handler in handlers)
         {
-            Service.namePlateGui.OnNamePlateUpdate += (context, handlers) =>
-            {
-                if (!Service.configuration.enabled || !Service.configuration.nameHQ)
-                    return;
-
-                foreach (var handler in handlers)
-                {
-                    if (handler.NamePlateKind == NamePlateKind.PlayerCharacter)
-                    {
-                        unsafe
-                        {
-                            if (handler.PlayerCharacter == null) return;
-
-                            // Only add HQ symbol to your own character if it's been race-changed
-                            if (Service.clientState.LocalPlayer != null &&
-                                handler.PlayerCharacter.Name.TextValue == Service.clientState.LocalPlayer.Name.TextValue &&
-                                Drawer.NonNativeID.Contains(handler.PlayerCharacter.Name.TextValue))
-                            {
-                                // Plugin.OutputChatLine($"Adding HQ to {handler.PlayerCharacter.Name.TextValue}");
-                                handler.NameParts.Text = $"{handler.Name} \uE03C";
-                            }
-                        }
-                    }
-                }
-            };
+            if (handler.PlayerCharacter?.Address == Drawer.ChangedActor)
+                handler.NameParts.Text = $"{handler.Name} \uE03C";
         }
-
-        public void Dispose() { }
     }
+
+    public void Dispose() => Service.namePlateGui.OnNamePlateUpdate -= UpdateNameplates;
 }
