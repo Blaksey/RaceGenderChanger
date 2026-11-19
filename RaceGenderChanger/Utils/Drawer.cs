@@ -1,111 +1,82 @@
-using FFXIVClientStructs.FFXIV.Client.Game.Object;
-using Penumbra.Api.Enums;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using static RaceGenderChanger.Utils.Constant;
 
-namespace RaceGenderChanger.Utils
+namespace RaceGenderChanger.Utils;
+
+internal sealed class Drawer : IDisposable
 {
-    internal class Drawer : IDisposable
+    private bool disposed;
+    internal static nint ChangedActor { get; private set; }
+
+    public Drawer()
     {
-        public static HashSet<string> NonNativeID = [];
+        Service.configWindow.OnConfigChanged += RefreshLocalPlayer;
+        Service.clientState.Login += OnLogin;
+        Service.clientState.Logout += OnLogout;
+        if (Service.configuration.enabled)
+            RefreshLocalPlayer();
+    }
 
-        public Drawer()
+    private void OnLogin()
+    {
+        if (Service.configuration.enabled)
+            RefreshLocalPlayer();
+    }
+
+    private void OnLogout(int type, int code) => ChangedActor = 0;
+
+    // Defer even on the framework thread so UI callbacks and IPC notifications can finish first.
+    internal void RefreshLocalPlayer() => _ = Service.framework.RunOnTick(() =>
+    {
+        if (disposed)
+            return;
+
+        Service.penumbraApi.RedrawLocalPlayer(reportUnavailable: Service.configuration.enabled);
+        Service.namePlateGui.RequestRedraw();
+    });
+
+    internal static unsafe void OnCreatingCharacterBase(nint actor, Guid _collection, nint model, nint data, nint _equipment)
+    {
+        if (!Service.configuration.enabled || !Service.framework.IsInFrameworkUpdateThread ||
+            actor == 0 || model == 0 || data == 0 || *(ushort*)model != 0 ||
+            Service.objectTable.LocalPlayer?.Address != actor)
+            return;
+
+        ChangedActor = 0;
+        var customize = (CustomizeData*)data;
+        // Penumbra normally supplies the model's creation buffer. Never overwrite live actor data.
+        if (customize == &((Character*)actor)->DrawData.CustomizeData)
         {
-            Service.configWindow.OnConfigChanged += RefreshLocalPlayer;
-            if (Service.configuration.enabled)
-            {
-                Plugin.OutputChatLine("RaceGenderChanger starting...");
-                RefreshLocalPlayer();
-            }
+            Service.log.Warning("Penumbra supplied live actor customization to the creation callback.");
+            return;
         }
 
-        private static void RefreshLocalPlayer()
-        {
-            // Always allow refresh - this is needed when:
-            // 1. Plugin gets enabled (to apply changes)
-            // 2. Plugin gets disabled (to revert changes)
-            // 3. Settings change while enabled (to update appearance)
-            Plugin.OutputChatLine("Refreshing local player appearance");
-            Service.penumbraApi.RedrawLocalPlayer(RedrawType.Redraw);
-            Service.namePlateGui.RequestRedraw();
-        }
+        var targetRace = (byte)Service.configuration.SelectedRace;
+        var targetSex = Service.configuration.SelectedGender;
+        if (targetRace is < (byte)Race.HYUR or > (byte)Race.VIERA || targetSex > 1 ||
+            customize->Race is < (byte)Race.HYUR or > (byte)Race.VIERA ||
+            (customize->Race == targetRace && customize->Sex == targetSex))
+            return;
 
-        public static unsafe void OnCreatingCharacterBase(nint gameObjectAddress, Guid _1, nint _2, nint customizePtr, nint _3)
-        {
-            if (!Service.configuration.enabled) return;
+        var target = *customize;
+        if (target.Race != targetRace)
+            target.Tribe = (byte)(targetRace * 2 - (target.Tribe & 1));
 
-            // return if not player character
-            var gameObj = (GameObject*)gameObjectAddress;
-            if (gameObj->ObjectKind != ObjectKind.Pc) return;
+        target.Race = targetRace;
+        target.Sex = targetSex;
+        var normalized = target;
+        _ = normalized.Normalize(&target);
+        *customize = normalized;
+        ChangedActor = actor;
+    }
 
-            // Only change your own character - check if this is the local player
-            if (Service.clientState.LocalPlayer == null) return;
-            if (gameObj->NameString != Service.clientState.LocalPlayer.Name.TextValue) return;
-
-            var customData = Marshal.PtrToStructure<CharaCustomizeData>(customizePtr);
-
-            // Determine target gender with safety checks
-            byte targetGender = Service.configuration.SelectedGender;
-            if (Service.configuration.SelectedRace == Race.HROTHGAR)
-            {
-                targetGender = 0; // Force male for Hrothgar
-            }
-            else if (Service.configuration.SelectedRace == Race.VIERA)
-            {
-                targetGender = 1; // Force female for Viera
-            }
-
-            // Check if we need to change race OR gender
-            bool needsRaceChange = customData.Race != Service.configuration.SelectedRace && customData.Race != Race.UNKNOWN;
-            bool needsGenderChange = customData.Gender != targetGender;
-
-            if (!needsRaceChange && !needsGenderChange)
-                return;
-
-            NonNativeID.Add(gameObj->NameString);
-            ChangeRace(customData, customizePtr, Service.configuration.SelectedRace);
-        }
-
-        private static unsafe void ChangeRace(CharaCustomizeData customData, nint customizePtr, Race selectedRace)
-        {
-            var originalRace = customData.Race;
-            var originalGender = customData.Gender;
-
-            // Apply gender with safety checks for race-locked genders
-            byte targetGender = Service.configuration.SelectedGender;
-            if (selectedRace == Race.HROTHGAR)
-            {
-                targetGender = 0; // Force male for Hrothgar
-            }
-            else if (selectedRace == Race.VIERA)
-            {
-                targetGender = 1; // Force female for Viera
-            }
-
-            customData.Race = selectedRace;
-            customData.Gender = targetGender;
-
-            // Recalculate tribe based on race and gender
-            // Each race has 2 tribes: one for each gender typically
-            byte baseTribe = (byte)((byte)selectedRace * 2);
-            customData.Tribe = (byte)(baseTribe - 1 + targetGender);
-
-            // Reset face and hair to valid values for the new race/gender combination
-            customData.FaceType %= 4;
-            customData.HairStyle = (byte)((customData.HairStyle % RaceMappings.RaceHairs[selectedRace]) + 1);
-
-            // Debug output
-            Plugin.OutputChatLine($"Race: {originalRace} → {selectedRace}, Gender: {originalGender} → {targetGender}, Tribe: {customData.Tribe}");
-
-            Marshal.StructureToPtr(customData, customizePtr, true);
-        }
-
-        public void Dispose()
-        {
-            Service.configWindow.OnConfigChanged -= RefreshLocalPlayer;
-        }
+    public void Dispose()
+    {
+        disposed = true;
+        Service.configWindow.OnConfigChanged -= RefreshLocalPlayer;
+        Service.clientState.Login -= OnLogin;
+        Service.clientState.Logout -= OnLogout;
+        ChangedActor = 0;
     }
 }

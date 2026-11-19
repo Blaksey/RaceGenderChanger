@@ -1,51 +1,73 @@
 using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc.Exceptions;
 using Penumbra.Api.Enums;
-using Penumbra.Api.Helpers;
 using Penumbra.Api.IpcSubscribers;
 using System;
 
-namespace RaceGenderChanger.Utils
+namespace RaceGenderChanger.Utils;
+
+internal sealed class PenumbraIpc : IDisposable
 {
-    internal class PenumbraIpc(IDalamudPluginInterface pluginInterface) : IDisposable
+    private readonly GetEnabledState getEnabledState;
+    private readonly RedrawObject redrawObject;
+    private readonly IDisposable creation;
+    private readonly IDisposable initialized;
+    private readonly IDisposable enabledChange;
+
+    public PenumbraIpc(IDalamudPluginInterface pluginInterface)
     {
-        private readonly RedrawAll redrawAll = new(pluginInterface);
-        private readonly RedrawObject redrawObject = new(pluginInterface);
-        private readonly EventSubscriber<nint, Guid, nint, nint, nint> creatingCharacterBaseEvent =
-            CreatingCharacterBase.Subscriber(pluginInterface, Drawer.OnCreatingCharacterBase);
-
-        public void Dispose()
+        getEnabledState = new GetEnabledState(pluginInterface);
+        redrawObject = new RedrawObject(pluginInterface);
+        creation = CreatingCharacterBase.Subscriber(pluginInterface, Drawer.OnCreatingCharacterBase);
+        initialized = Initialized.Subscriber(pluginInterface, OnPenumbraReady);
+        enabledChange = EnabledChange.Subscriber(pluginInterface, enabled =>
         {
-            creatingCharacterBaseEvent.Dispose();
-        }
+            if (enabled)
+                OnPenumbraReady();
+        });
+    }
 
-        internal void RedrawAll(RedrawType setting)
-        {
-            try
-            {
-                redrawAll.Invoke(setting);
-            }
-            catch (Exception ex)
-            {
-                Plugin.OutputChatLine($"Warning: Penumbra not found. Error: {ex.Message}\n" +
-                                      "Note: if you disable Penumbra before this plugin, lalafells will stay there until updated.");
-            }
-        }
+    private static void OnPenumbraReady()
+    {
+        if (Service.configuration.enabled)
+            Service.drawer?.RefreshLocalPlayer();
+    }
 
-        internal void RedrawLocalPlayer(RedrawType setting)
+    internal void RedrawLocalPlayer(bool reportUnavailable)
+    {
+        try
         {
-            try
+            var player = Service.objectTable.LocalPlayer;
+            if (player == null)
+                return;
+
+            if (!getEnabledState.Invoke())
             {
-                if (Service.clientState.LocalPlayer != null)
-                {
-                    redrawObject.Invoke(Service.clientState.LocalPlayer.ObjectIndex, setting);
-                }
+                if (reportUnavailable)
+                    Plugin.OutputChatLine("Enable mods in Penumbra to change your appearance.");
+                return;
             }
-            catch (Exception ex)
-            {
-                Plugin.OutputChatLine($"Warning: Could not redraw local player. Error: {ex.Message}");
-                // Fallback to redrawing all if targeted redraw fails
-                RedrawAll(setting);
-            }
+
+            redrawObject.Invoke(player.ObjectIndex, RedrawType.Redraw);
         }
+        catch (IpcNotReadyError ex)
+        {
+            Service.log.Warning($"Penumbra IPC is unavailable: {ex.Message}");
+            if (reportUnavailable)
+                Plugin.OutputChatLine("Penumbra has not loaded its API. Install or enable Penumbra in the Dalamud Plugin Installer.");
+        }
+        catch (Exception ex)
+        {
+            Service.log.Warning(ex, "Could not request a local-player redraw from Penumbra.");
+            if (reportUnavailable)
+                Plugin.OutputChatLine("Could not redraw your character. Check that Penumbra is installed, up to date, and active.");
+        }
+    }
+
+    public void Dispose()
+    {
+        initialized.Dispose();
+        enabledChange.Dispose();
+        creation.Dispose();
     }
 }
